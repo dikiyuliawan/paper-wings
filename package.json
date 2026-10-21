@@ -1,0 +1,19 @@
+{
+  "name": "paper-wings",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Paper Wings - a one-button arcade flyer in a paper-cut sunset forest.",
+  "scripts": {
+    "start": "node scripts/serve.js",
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "node --test \"tests/unit/*.test.js\"",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "shot": "node scripts/shot.js",
+    "perf": "node scripts/perf.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12102a">
+<meta name="description" content="Paper Wings - a one-button arcade flyer through a paper-cut sunset forest.">
+<meta name="color-scheme" content="dark">
+<title>Paper Wings</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23ff8f5e'/%3E%3Cpath d='M20 13l8 3-8 3z' fill='%23ffcf5c'/%3E%3Ccircle cx='13' cy='13' r='2.4' fill='%232a1b3d'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app" data-state="ready">
+  <div id="sky" aria-hidden="true"></div>
+  <canvas id="game" aria-label="Paper Wings game area" role="img"></canvas>
+
+  <div class="hud">
+    <div class="hud__score">
+      <span id="score" class="hud__value">0</span>
+      <span class="hud__best">best <b id="best">0</b></span>
+    </div>
+    <div class="hud__buttons">
+      <button id="btn-pause" class="icon-button" type="button" aria-label="Pause" title="Pause (P)">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="icon icon--pause"><rect x="6" y="5" width="4" height="14" rx="1.5"/><rect x="14" y="5" width="4" height="14" rx="1.5"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="icon icon--play"><path d="M8 5.5l11 6.5-11 6.5z"/></svg>
+      </button>
+      <button id="btn-sound" class="icon-button" type="button" aria-label="Mute sound" aria-pressed="false" title="Sound">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="icon icon--sound"><path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z"/><path d="M15.5 8.5a5 5 0 010 7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18 6a8.5 8.5 0 010 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="icon icon--muted"><path d="M4 9.5h3.5L12 5.5v13L7.5 14.5H4z"/><path d="M16 9.5l5 5m0-5l-5 5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+      </button>
+      <button id="btn-motion" class="icon-button" type="button" aria-label="Reduce motion" aria-pressed="false" title="Reduce motion">
+        <svg viewBox="0 0 24 24" aria-hidden="true" class="icon"><path d="M4 12h16M7 8l-3 4 3 4M17 8l3 4-3 4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <section class="panel panel--ready" data-panel="ready">
+      <h1 class="panel__title">Paper&nbsp;Wings</h1>
+      <p class="panel__lead">Fly the little paper bird through the sunset forest.</p>
+      <p class="panel__hint"><kbd>Space</kbd> <span class="dot"></span> <kbd>Click</kbd> <span class="dot"></span> <kbd>Tap</kbd></p>
+      <p class="panel__hint panel__hint--muted">Press to start</p>
+    </section>
+
+    <section class="panel panel--paused" data-panel="paused" hidden>
+      <h1 class="panel__title">Paused</h1>
+      <p class="panel__lead">Take a breath.</p>
+      <p class="panel__hint">Press to continue</p>
+    </section>
+
+    <section class="panel panel--over" data-panel="gameover" hidden>
+      <h1 class="panel__title">Game over</h1>
+      <p class="panel__score"><span id="final-score">0</span></p>
+      <p class="panel__badge" id="new-best" hidden>New best!</p>
+      <p class="panel__hint">Press to fly again</p>
+      <button class="button" id="btn-again" type="button">Fly again</button>
+    </section>
+  </div>
+
+  <p class="sr-only" id="live" aria-live="polite"></p>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
