@@ -227,6 +227,24 @@ body {
   color: var(--coral);
 }
 
+.panel__record {
+  margin: 0 0 16px;
+  font-size: clamp(12px, 3vmin, 14px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(255, 244, 226, 0.72);
+}
+
+.panel__record[hidden] {
+  display: none;
+}
+
+.panel__record b {
+  color: var(--amber);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
 .panel__hint--muted {
   margin-top: 12px;
   color: rgba(255, 244, 226, 0.7);

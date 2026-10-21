@@ -36,7 +36,9 @@ needed for the tests.
 * The bird rises when you flap and sinks the rest of the time. Its nose tilts
   with its speed, so you can read the arc at a glance.
 * You get one point for every column you pass. Your best score is stored in
-  the browser and survives a reload.
+  the browser and survives a reload, a restart of the browser and coming back
+  hours later. The start screen shows the record and when you set it
+  ("27 - set 3 hours ago").
 * The columns speed up and the openings get tighter the further you get, up
   to a hard cap (see *Difficulty* below). There are no sudden spikes: the
   curve is continuous.
@@ -104,6 +106,18 @@ lifts the bird 80 units, the openings always overlap vertically, which means
 **every generated course can be flown**. The unit test suite proves it: an
 autopilot flies 120 randomly generated courses without a single crash.
 
+### The record
+
+The best score is written to `localStorage` the moment it is beaten, together
+with the time it was set, so the start screen can say how long ago the record
+was made. There is no expiry: a record from this morning is still there
+tonight.
+
+If the browser refuses to store anything (private mode, blocked cookies), the
+storage layer falls back to `sessionStorage` and then to memory, so the
+record is never lost silently. Older versions that stored a plain number are
+still read.
+
 ### Fair hitboxes
 
 The bird is drawn about 34 x 26 units but collides as a circle with a radius
@@ -147,14 +161,17 @@ npm run test:e2e     # Playwright
 
 The unit suite covers the simulation: physics, rotation, the rules for the
 generated openings, the solvability fuzz test, scoring, collisions, the state
-machine, restarts, frame-rate independence, long stalls and the storage.
+machine, restarts, frame-rate independence, long stalls and the storage
+(including the fallback chain and the record timestamp).
 
 The browser suite (Playwright, driving your installed Chrome) covers the real
 thing on a desktop, a Pixel 5 and an iPhone 13 profile: keyboard, mouse and
 touch input, page scrolling, repeated restarts, pause and resume, the tab
-losing focus, score persistence, collision boundaries, narrow screens,
-resizing, high-DPI screens, reduced motion, the simulation at 30 and 144 fps,
-and the frame cost on a CPU-throttled phone.
+losing focus, score persistence (including a real browser restart with the
+same profile), the record appearing in the corner as soon as you score, the
+start screen showing the record and its age, collision boundaries, narrow
+screens, resizing, high-DPI screens, reduced motion, the simulation at 30 and
+144 fps, and the frame cost on a CPU-throttled phone.
 
 Two helper scripts are handy while working on the game:
 

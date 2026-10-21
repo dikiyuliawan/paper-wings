@@ -404,10 +404,57 @@ test('the best score is saved and reloaded', () => {
   }
   assert.equal(game.score, 12);
   assert.equal(game.best, 12);
-  assert.equal(backing.data[CONFIG.storage.best], '12');
+
+  const record = JSON.parse(backing.data[CONFIG.storage.best]);
+  assert.equal(record.score, 12);
+  assert.ok(record.at > 0, 'the record remembers when it was set');
 
   const reloaded = makeGame({ storage });
   assert.equal(reloaded.best, game.best, 'the best score survives a reload');
+  assert.equal(reloaded.recordAt, record.at, 'the time of the record survives too');
+});
+
+test('a record written by an older version is still read', () => {
+  const backing = memoryStorage({ [CONFIG.storage.best]: '7' });
+  const game = makeGame({ storage: createStorage(backing) });
+  assert.equal(game.best, 7);
+  assert.equal(game.recordAt, 0);
+});
+
+test('the record time can be injected', () => {
+  const backing = memoryStorage();
+  const game = makeGame({ storage: createStorage(backing), now: () => 1_700_000_000_000 });
+  game.restart();
+  game.pipes = [{
+    x: game.birdX - 100,
+    width: CONFIG.pipes.width,
+    gap: 200,
+    center: game.bird.y,
+    scored: false,
+  }];
+  game.update(1 / 120);
+  assert.equal(game.recordAt, 1_700_000_000_000);
+  assert.equal(JSON.parse(backing.data[CONFIG.storage.best]).at, 1_700_000_000_000);
+});
+
+test('the record is written to disk when the run ends', () => {
+  const backing = memoryStorage();
+  const game = makeGame({ storage: createStorage(backing) });
+  game.restart();
+  game.pipes = [{
+    x: game.birdX - 100,
+    width: CONFIG.pipes.width,
+    gap: 200,
+    center: game.bird.y,
+    scored: false,
+  }];
+  game.update(1 / 120);
+  assert.equal(game.score, 1);
+  backing.data[CONFIG.storage.best] = undefined;
+  game.bird.y = game.groundY;
+  game.update(1 / 120);
+  assert.equal(game.state, STATE.GAMEOVER);
+  assert.ok(backing.data[CONFIG.storage.best], 'the record is flushed on game over');
 });
 
 test('a broken storage backend never crashes the game', () => {
@@ -424,6 +471,20 @@ test('a broken storage backend never crashes the game', () => {
   game.restart();
   game.update(1 / 120);
   assert.equal(game.state, STATE.PLAYING);
+});
+
+test('storage falls back to the next store when one refuses to write', () => {
+  const broken = {
+    getItem() {
+      throw new Error('nope');
+    },
+    setItem() {
+      throw new Error('nope');
+    },
+  };
+  const storage = createStorage(broken);
+  assert.equal(storage.setItem('key', 'value'), true, 'the write still succeeds');
+  assert.equal(storage.getItem('key'), 'value', 'the value can be read back');
 });
 
 test('a missing storage backend behaves like an empty one', () => {

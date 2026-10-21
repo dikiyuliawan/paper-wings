@@ -10,6 +10,7 @@ import { STATE, createGame, createStorage } from './core.js';
 import { Renderer } from './render.js';
 import { createAudio } from './audio.js';
 import { createInput } from './input.js';
+import { formatRecordAge } from './format.js';
 
 const app = document.getElementById('app');
 const canvas = document.getElementById('game');
@@ -18,6 +19,9 @@ const scoreEl = document.getElementById('score');
 const bestEl = document.getElementById('best');
 const finalScoreEl = document.getElementById('final-score');
 const newBestEl = document.getElementById('new-best');
+const recordNoteEl = document.getElementById('record-note');
+const recordScoreEl = document.getElementById('record-score');
+const recordAgeEl = document.getElementById('record-age');
 const liveEl = document.getElementById('live');
 const btnPause = document.getElementById('btn-pause');
 const btnSound = document.getElementById('btn-sound');
@@ -110,7 +114,21 @@ function updateScore() {
 }
 
 function updateBest() {
-  bestEl.textContent = String(game.best);
+  const text = String(game.best);
+  if (bestEl.textContent !== text) {
+    bestEl.textContent = text;
+  }
+}
+
+/** "Best 12 - set 3 hours ago" on the start screen. */
+function updateRecordNote() {
+  if (!game.best || !game.recordAt) {
+    recordNoteEl.hidden = true;
+    return;
+  }
+  recordNoteEl.hidden = false;
+  recordScoreEl.textContent = String(game.best);
+  recordAgeEl.textContent = `set ${formatRecordAge(game.recordAt)}`;
 }
 
 function syncState() {
@@ -129,6 +147,10 @@ function syncState() {
   if (game.state === STATE.GAMEOVER) {
     finalScoreEl.textContent = String(game.score);
     newBestEl.hidden = game.score <= bestAtRunStart || game.score === 0;
+  }
+
+  if (game.state === STATE.READY) {
+    updateRecordNote();
   }
 
   if (game.state === STATE.PLAYING) {
@@ -201,6 +223,7 @@ function frame(now) {
   renderer.render(game, view, { reducedMotion });
   syncState();
   updateScore();
+  updateBest();
   const work = performance.now() - started;
   lastWork = work;
   averageWork = averageWork === 0 ? work : averageWork * 0.9 + work * 0.1;
@@ -292,8 +315,16 @@ btnMotion.addEventListener('click', (event) => {
 
 // Keep the audio context alive when the player comes back to the tab.
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) audio.resume();
+  if (!document.hidden) {
+    audio.resume();
+    updateRecordNote();
+  }
 });
+
+// "set 3 hours ago" has to keep up with the clock.
+setInterval(() => {
+  if (game.state === STATE.READY) updateRecordNote();
+}, 30_000);
 
 // ------------------------------------------------------------- wake lock
 

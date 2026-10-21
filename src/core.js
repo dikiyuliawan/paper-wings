@@ -27,34 +27,70 @@ export function createRng(seed) {
 }
 
 /**
- * Storage adapter that never throws (Safari private mode, disabled cookies...).
- * `backend` defaults to localStorage when it is available.
+ * A tiny in-memory store, used as the last resort when the browser refuses
+ * to store anything.
+ */
+function createMemoryStore() {
+  const data = new Map();
+  return {
+    getItem: (key) => (data.has(key) ? data.get(key) : null),
+    setItem: (key, value) => {
+      data.set(key, String(value));
+    },
+    removeItem: (key) => {
+      data.delete(key);
+    },
+  };
+}
+
+/**
+ * Storage adapter that never throws (Safari private mode, disabled cookies...)
+ * and that falls back to the next store when one refuses to write.
+ *
+ * Without an explicit backend the chain is
+ * localStorage -> sessionStorage -> memory, so a record is kept for the whole
+ * session even when the browser blocks persistent storage.
  */
 export function createStorage(backend) {
-  let store = backend;
-  if (store === undefined) {
+  const stores = [];
+  if (backend) {
+    stores.push(backend);
+  } else if (backend === undefined) {
     try {
-      store = typeof localStorage !== 'undefined' ? localStorage : null;
+      if (typeof localStorage !== 'undefined' && localStorage) stores.push(localStorage);
     } catch {
-      store = null;
+      /* storage is not available */
+    }
+    try {
+      if (typeof sessionStorage !== 'undefined' && sessionStorage) stores.push(sessionStorage);
+    } catch {
+      /* storage is not available */
     }
   }
+  stores.push(createMemoryStore());
+
   return {
     getItem(key) {
-      try {
-        return store ? store.getItem(key) : null;
-      } catch {
-        return null;
+      for (const store of stores) {
+        try {
+          const value = store.getItem(key);
+          if (value !== null && value !== undefined) return value;
+        } catch {
+          /* try the next store */
+        }
       }
+      return null;
     },
     setItem(key, value) {
-      try {
-        if (!store) return false;
-        store.setItem(key, value);
-        return true;
-      } catch {
-        return false;
+      for (const store of stores) {
+        try {
+          store.setItem(key, value);
+          return true;
+        } catch {
+          /* try the next store */
+        }
       }
+      return false;
     },
   };
 }
@@ -76,6 +112,7 @@ export function createGame(options = {}) {
   const config = options.config ?? CONFIG;
   const rng = options.rng ?? Math.random;
   const storage = options.storage ?? createStorage(options.storageBackend);
+  const now = options.now ?? (() => Date.now());
 
   const game = {
     config,
@@ -88,6 +125,8 @@ export function createGame(options = {}) {
     lastFrameAt: 0,
     score: 0,
     best: 0,
+    /** When the record was set (ms since the epoch, 0 when there is none). */
+    recordAt: 0,
     pipesPassed: 0,
     /** Total distance the world has scrolled (uw). Drives the parallax. */
     scroll: 0,
@@ -115,15 +154,40 @@ export function createGame(options = {}) {
 
   game.best = readBest();
 
+  /**
+   * Reads the stored record. Both the current format (json with the score and
+   * the time it was set) and the plain number written by older versions are
+   * understood.
+   */
   function readBest() {
-    if (typeof options.best === 'number') return options.best;
+    if (typeof options.best === 'number') {
+      game.best = options.best;
+      return options.best;
+    }
     const raw = storage.getItem(config.storage.best);
-    const parsed = Number.parseInt(raw ?? '', 10);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+    if (raw === null || raw === undefined || raw === '') return 0;
+    const plain = Number.parseInt(raw, 10);
+    if (Number.isFinite(plain) && plain > 0) return plain;
+    try {
+      const data = JSON.parse(raw);
+      const score = Number.parseInt(data?.score, 10);
+      if (Number.isFinite(score) && score > 0) {
+        game.recordAt = Number.isFinite(data?.at) ? data.at : 0;
+        return score;
+      }
+    } catch {
+      /* not a record we understand */
+    }
+    return 0;
   }
 
+  /** Writes the record, together with the time it was reached. */
   game.saveBest = function saveBest() {
-    storage.setItem(config.storage.best, String(game.best));
+    if (!game.recordAt) game.recordAt = now();
+    storage.setItem(
+      config.storage.best,
+      JSON.stringify({ score: game.best, at: game.recordAt }),
+    );
   };
 
   // ---------------------------------------------------------------- viewport
@@ -403,6 +467,7 @@ export function createGame(options = {}) {
         game.pipesPassed += 1;
         if (game.score > game.best) {
           game.best = game.score;
+          game.recordAt = now();
           game.saveBest();
         }
         game.emit('score', { score: game.score, best: game.best });
@@ -443,6 +508,8 @@ export function createGame(options = {}) {
     game.deathReason = reason;
     game.bird.alive = false;
     game.shake = game.reducedMotion ? 0 : 1;
+    // Make sure the record is on disk, even if the tab goes away right now.
+    game.saveBest();
     game.emit('hit', { reason });
     if (!game.reducedMotion) game.spawnFeathers();
     game.emit('gameover', { score: game.score, best: game.best });
